@@ -1,120 +1,59 @@
 import os
+from dotenv import load_dotenv
 import requests
-import inspect
 import pandas as pd
 
-DEFAULT_API_URL = "https://jofthomas-unit4-scoring.hf.space/"
+# Load environment variables from .env file
+load_dotenv()
+
+# Get values
+HF_USERNAME = os.getenv("HF_USERNAME")
+API_URL = os.getenv("API_URL", "https://jofthomas-unit4-scoring.hf.space/")  # Fallback to default
 
 class BasicAgent:
-    def __init__(self):
-        print("BasicAgent initialized.")
-
     def __call__(self, question: str) -> str:
-        print(f"Agent received question (first 50 chars): {question[:50]}...")
-        fixed_answer = "This is a default answer."
-        print(f"Agent returning fixed answer: {fixed_answer}")
-        return fixed_answer
+        return "This is a default answer."
 
-    def __repr__(self) -> str:
-        imports = ["import inspect\n"]
-        class_source = inspect.getsource(BasicAgent)
-        full_source = "\n".join(imports) + "\n" + class_source
-        return full_source
-
-def get_current_script_content() -> str:
-    try:
-        script_path = os.path.abspath(__file__)
-        with open(script_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except Exception as e:
-        print(f"Warning: Cannot read script content: {e}")
-        return "# Agent code unavailable"
-
-def run_and_submit_all(username: str):
-    api_url = DEFAULT_API_URL
-    questions_url = f"{api_url}/questions"
-    submit_url = f"{api_url}/submit"
-
-    try:
-        agent = BasicAgent()
-        agent_code = get_current_script_content()
-    except Exception as e:
-        print(f"Error initializing agent: {e}")
+def run_and_submit_all():
+    if not HF_USERNAME:
+        print("HF_USERNAME is not set in the environment.")
         return
 
-    print(f"Fetching questions from: {questions_url}")
+    questions_url = f"{API_URL}/questions"
+    submit_url = f"{API_URL}/submit"
+
+    agent = BasicAgent()
+    agent_code = inspect.getsource(BasicAgent)
+
     try:
-        response = requests.get(questions_url, timeout=15)
+        response = requests.get(questions_url, timeout=10)
         response.raise_for_status()
-        questions_data = response.json()
-        if not questions_data:
-            print("Fetched questions list is empty.")
-            return
+        questions = response.json()
     except Exception as e:
-        print(f"Error fetching questions: {e}")
+        print("Error fetching questions:", e)
         return
 
-    results_log = []
-    answers_payload = []
-    for item in questions_data:
-        task_id = item.get("task_id")
-        question_text = item.get("question")
-        if not task_id or question_text is None:
-            continue
-        try:
-            submitted_answer = agent(question_text)
-            answers_payload.append({
-                "task_id": task_id,
-                "submitted_answer": submitted_answer
-            })
-            results_log.append({
-                "Task ID": task_id,
-                "Question": question_text,
-                "Submitted Answer": submitted_answer
-            })
-        except Exception as e:
-            print(f"Agent error on task {task_id}: {e}")
-            results_log.append({
-                "Task ID": task_id,
-                "Question": question_text,
-                "Submitted Answer": f"AGENT ERROR: {e}"
-            })
+    answers = []
+    for q in questions:
+        answer = agent(q["question"])
+        answers.append({
+            "task_id": q["task_id"],
+            "submitted_answer": answer
+        })
 
-    if not answers_payload:
-        print("Agent did not produce any answers to submit.")
-        return
-
-    submission_data = {
-        "username": username.strip(),
+    submission = {
+        "username": HF_USERNAME,
         "agent_code": agent_code,
-        "answers": answers_payload
+        "answers": answers
     }
 
-    print(f"Submitting answers to: {submit_url}")
     try:
-        response = requests.post(submit_url, json=submission_data, timeout=45)
-        response.raise_for_status()
-        result_data = response.json()
-        final_status = (
-            f"\nSubmission Successful!\n"
-            f"User: {result_data.get('username')}\n"
-            f"Score: {result_data.get('score')}% "
-            f"({result_data.get('correct_count')}/{result_data.get('total_attempted')})\n"
-            f"Message: {result_data.get('message')}"
-        )
-        print(final_status)
+        res = requests.post(submit_url, json=submission, timeout=15)
+        res.raise_for_status()
+        result = res.json()
+        print("Submission Result:", result)
     except Exception as e:
-        print(f"Submission failed: {e}")
-
-    # Display table of results
-    results_df = pd.DataFrame(results_log)
-    print("\n--- Results Table ---")
-    print(results_df.to_string(index=False))
+        print("Submission failed:", e)
 
 if __name__ == "__main__":
-    print("=== Basic Agent Evaluation CLI ===")
-    username = input("Enter your Hugging Face username: ").strip()
-    if not username:
-        print("Username is required to proceed.")
-    else:
-        run_and_submit_all(username)
+    run_and_submit_all()
