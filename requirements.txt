@@ -4,3 +4,4 @@ langchain-core
 langchain-openai
 langgraph
 openai
+vim
