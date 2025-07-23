@@ -109,39 +109,45 @@ def extract_final_answer(content: str) -> str:
     return content.strip()
 
 def assistant(state: AgentState):
-    tool_descriptions = '''
-openai_web_search(query: str) -> str:
-    Perform a web search to find recent and relevant information.
+    file_context = state.get("input_file", "")
+    messages = state["messages"]
 
-image_analyzer_tool(image_path: str, prompt: str) -> str:
-    Analyze the contents of an image file (such as input_file) using OpenAI's vision model.
+    # If file is attached, generate a tool call
+    if file_context and os.path.exists(file_context):
+        mime_type, _ = mimetypes.guess_type(file_context)
+        if mime_type:
+            if mime_type.startswith("image"):
+                return {
+                    "input_file": file_context,
+                    "messages": messages,
+                    "tool_calls": [{
+                        "tool_name": "image_analyzer_tool",
+                        "args": {"image_path": file_context, "prompt": "Describe this image."}
+                    }]
+                }
+            elif mime_type.startswith("audio"):
+                return {
+                    "input_file": file_context,
+                    "messages": messages,
+                    "tool_calls": [{
+                        "tool_name": "audio_transcription_tool",
+                        "args": {"audio_path": file_context, "prompt": "Transcribe this audio."}
+                    }]
+                }
 
-audio_transcription_tool(audio_path: str, prompt: str) -> str:
-    Transcribe an audio file (such as input_file) into plain text using Whisper.
-'''
-
-
-    file_context = state.get("input_file", "None")
+    # No file or unknown type; proceed with regular assistant reasoning
     sys_msg = SystemMessage(
-        content=f"""You are a general AI assistant. I will ask you a question. Report your thoughts, and finish your answer with the following template: FINAL ANSWER: [YOUR FINAL ANSWER]. YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise. If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string.:
-
-
-Attached input file (if any): {file_context}
-
-If an input file is attached, determine its type (image/audio/other) and use the appropriate tool to analyze or transcribe its content before answering the question.
-You can use any of the following tools. {tool_descriptions}
-Remeber, You are a general AI assistant. I will ask you a question. Report your thoughts, and finish your answer with the following template: FINAL ANSWER: [YOUR FINAL ANSWER]. YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise. If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string.
-"""
-
+        content="""You are a general AI assistant. I will ask you a question. Report your thoughts, and finish your answer with the following template: FINAL ANSWER: [YOUR FINAL ANSWER]. YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise. If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string."""
     )
 
-    messages = [sys_msg] + [
+    full_messages = [sys_msg] + [
         {"role": "user" if isinstance(m, HumanMessage) else "assistant", "content": m.content}
-        for m in state["messages"]
+        for m in messages
     ]
 
-    response = llm.invoke(messages)
+    response = llm.invoke(full_messages)
     final_answer = extract_final_answer(response.content)
+
     return {
         "messages": [AIMessage(content=final_answer)],
         "input_file": file_context
