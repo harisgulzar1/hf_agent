@@ -61,4 +61,4 @@ This flow is visualized in `graph_diagram.png`.
 The script’s `run_and_submit_all()` function can fetch multiple tasks from a specified API, run them, and submit answers back.
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the Apache License 2.0.
