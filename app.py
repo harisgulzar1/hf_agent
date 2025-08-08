@@ -140,17 +140,8 @@ def video_analysis_tool(youtube_url: str, prompt: str = "Transcribe or summarize
 
 
 tools = [openai_web_search, image_analyzer_tool, audio_transcription_tool, video_analysis_tool]
-class CountingToolNode(ToolNode):
-    def __call__(self, state, config=None):
-        result = super().__call__(state, config)
-        current_iter = state.get("iteration", 0)
-        # Merge input state and tool result, increment iteration
-        merged = dict(state)
-        merged.update(result)
-        merged["iteration"] = current_iter + 1
-        return merged
 
-tool_node = CountingToolNode(tools)
+print("Registered tools:", [t.name for t in tools])
 
 
 llm = ChatOpenAI(
@@ -159,11 +150,11 @@ llm = ChatOpenAI(
     temperature=0.7,
     verbose=True,
     callbacks=[LangChainTracer()]
-)
+).bind_tools(tools)
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
-    input_file: Annotated[str, add_messages]
+    input_file: str #Annotated[str, add_messages]
     iteration: int
 
 
@@ -184,116 +175,121 @@ def get_valid_file_path(input_file):
         return input_file
     return None
 
-@traceable(name="handler-node")
-def handler_node(state: AgentState):
-    iteration = state.get("iteration", 0)
-    """
-    Decides what tools are needed (web, image, audio, video), encourages tool use,
-    and does NOT produce final answers. When ready, says 'READY FOR FINAL ANSWER'.
-    """
-    import json
-    messages = state["messages"]
-    input_file = state.get("input_file")
-    input_file_val = get_valid_file_path(input_file)
-    tool_calls = []
-    # 1. File-based tool
-    if input_file_val and os.path.isfile(input_file_val):
-        mime_type, _ = mimetypes.guess_type(input_file_val)
-        if mime_type:
-            if mime_type.startswith("image"):
-                tool_calls.append({"tool": "image_analyzer_tool", "args": {"image_path": input_file_val, "prompt": "Describe this image in detail."}})
-            elif mime_type.startswith("audio"):
-                tool_calls.append({"tool": "audio_transcription_tool", "args": {"audio_path": input_file_val, "prompt": "Transcribe this audio as plain text."}})
-    # 2. YouTube tool
-    youtube_regex = r"(https?://(?:www\.)?(?:youtube\.com|youtu\.be)/[\w\-?&=;#./]+)"
-    user_query = ""
-    for m in reversed(messages):
-        if isinstance(m, HumanMessage):
-            user_query = m.content
-            break
-    youtube_links = re.findall(youtube_regex, user_query)
-    if youtube_links:
-        yt_url = youtube_links[0]
-        tool_calls.append({
-            "tool": "video_analysis_tool",
-            "args": {
-                "youtube_url": yt_url,
-                "prompt": user_query
-            }
-        })
-    # If any tool should be called, output a function call
-    if tool_calls:
-        tool = tool_calls[0]
-        tool_name = tool["tool"]
-        tool_args = json.dumps(tool["args"])
-        print(f"[DEBUG handler_node] Emitting tool call: {tool_name} with args: {tool_args}")
-        return {
-            "messages": [
-                AIMessage(
-                    content="",
-                    additional_kwargs={
-                        "function_call": {
-                            "name": tool_name,
-                            "arguments": tool_args
-                        }
-                    }
-                )
-            ],
-            "input_file": input_file
-        }
-    # Otherwise, step-by-step reasoning, but NO FINAL ANSWER
-    tool_descriptions = '''
-            openai_web_search(query: str) -> str:
-                Use for up-to-date or external info from the web.
+# @traceable(name="handler-node")
+# def handler_node(state: AgentState):
+#     """
+#     Decides what tools are needed (web, image, audio, video), encourages tool use,
+#     and does NOT produce final answers. When ready, says 'READY FOR FINAL ANSWER'.
+#     """
+#     import json
+#     messages = state["messages"]
+#     input_file = state.get("input_file")
+#     iteration = state.get("iteration", 0)
 
-            image_analyzer_tool(image_path: str, prompt: str = 'Describe this image.') -> str:
-                Analyze images for content and details.
+#     input_file_val = get_valid_file_path(input_file)
+#     tool_calls = []
+#     # 1. File-based tool
+#     if input_file_val and os.path.isfile(input_file_val):
+#         mime_type, _ = mimetypes.guess_type(input_file_val)
+#         if mime_type:
+#             if mime_type.startswith("image"):
+#                 tool_calls.append({"tool": "image_analyzer_tool", "args": {"image_path": input_file_val, "prompt": "Describe this image in detail."}})
+#             elif mime_type.startswith("audio"):
+#                 tool_calls.append({"tool": "audio_transcription_tool", "args": {"audio_path": input_file_val, "prompt": "Transcribe this audio as plain text."}})
+#     # 2. YouTube tool
+#     youtube_regex = r"(https?://(?:www\.)?(?:youtube\.com|youtu\.be)/[\w\-?&=;#./]+)"
+#     user_query = ""
+#     for m in reversed(messages):
+#         if isinstance(m, HumanMessage):
+#             user_query = m.content
+#             break
+#     youtube_links = re.findall(youtube_regex, user_query)
+#     if youtube_links:
+#         yt_url = youtube_links[0]
+#         tool_calls.append({
+#             "tool": "video_analysis_tool",
+#             "args": {
+#                 "youtube_url": yt_url,
+#                 "prompt": user_query
+#             }
+#         })
+#     # If any tool should be called, output a function call
+#     if tool_calls:
+#         tool = tool_calls[0]
+#         tool_name = tool["tool"]
+#         tool_args = json.dumps(tool["args"])
+#         print(f"[DEBUG handler_node] Emitting tool call: {tool_name} with args: {tool_args}")
 
-            audio_transcription_tool(audio_path: str, prompt: str = 'Transcribe this audio.') -> str:
-                Transcribe audio to text.
+#         return {
+#             "messages": [
+#                 AIMessage(
+#                     content="",
+#                     additional_kwargs={
+#                         "function_call": {
+#                             "name": tool_name,
+#                             "arguments": tool_args
+#                         }
+#                     }
+#                 )
+#             ],
+#             "input_file": input_file,
+#             "iteration": iteration + 1
+#         }
 
-            video_analysis_tool(youtube_url: str, prompt: str = 'Transcribe or summarize the video.') -> str:
-                Analyze a YouTube video for transcript or summary.
-            '''
-    file_context = input_file_val or "None"
-    sys_msg = SystemMessage(
-        content=f"""
-            You are an AI assistant that thinks step by step and is encouraged to call tools for external information, files, or videos. 
-            Never produce the final answer directly in this step. If you believe you have ALL the information needed, respond with ONLY:
-            READY FOR FINAL ANSWER
+#     # Otherwise, step-by-step reasoning, but NO FINAL ANSWER
+#     tool_descriptions = '''
+#             openai_web_search(query: str) -> str:
+#                 Use for up-to-date or external info from the web.
 
-            Current input file (if any): {file_context}
+#             image_analyzer_tool(image_path: str, prompt: str = 'Describe this image.') -> str:
+#                 Analyze images for content and details.
 
-            If you need to use a tool, describe why and call the tool. Otherwise, if all information is present, say READY FOR FINAL ANSWER.
+#             audio_transcription_tool(audio_path: str, prompt: str = 'Transcribe this audio.') -> str:
+#                 Transcribe audio to text.
 
-            Available tools:
-            {tool_descriptions}
-            """)
-    chat_messages = [sys_msg] + [
-        {"role": "user" if isinstance(m, HumanMessage) else "assistant", "content": m.content}
-        for m in state["messages"]
-    ]
-    response = llm.invoke(chat_messages)
-    # If the LLM says 'READY FOR FINAL ANSWER' (case-insensitive), transition to output_node
-    if "ready for final answer" in response.content.lower():
-        return {
-            "messages": [AIMessage(content="READY FOR FINAL ANSWER")],
-            "input_file": file_context,
-            "iteration": iteration
-        }
-    # If max iterations reached, force finalize
-    if iteration >= 3:
-        return {
-            "messages": [AIMessage(content="READY FOR FINAL ANSWER")],
-            "input_file": file_context,
-            "iteration": iteration
-        }
-    # Otherwise, keep looping
-    return {
-        "messages": [AIMessage(content=response.content)],
-        "input_file": file_context,
-        "iteration": iteration
-    }
+#             video_analysis_tool(youtube_url: str, prompt: str = 'Transcribe or summarize the video.') -> str:
+#                 Analyze a YouTube video for transcript or summary.
+#             '''
+#     file_context = input_file_val or "None"
+#     sys_msg = SystemMessage(
+#         content=f"""
+#             You are an AI assistant that thinks step by step and is encouraged to call tools for external information, files, or videos. 
+#             Never produce the final answer directly in this step. If you believe you have ALL the information needed, respond with ONLY:
+#             READY FOR FINAL ANSWER
+
+#             Current input file (if any): {file_context}
+
+#             If you need to use a tool, describe why and call the tool. Otherwise, if all information is present, say READY FOR FINAL ANSWER.
+
+#             Available tools:
+#             {tool_descriptions}
+#             """)
+#     chat_messages = [sys_msg] + [
+#         {"role": "user" if isinstance(m, HumanMessage) else "assistant", "content": m.content}
+#         for m in state["messages"]
+#     ]
+#     response = llm.invoke(chat_messages)
+#     # If the LLM says 'READY FOR FINAL ANSWER' (case-insensitive), transition to output_node
+#     if "ready for final answer" in response.content.lower():
+#         return {
+#             "messages": [AIMessage(content="READY FOR FINAL ANSWER")],
+#             "input_file": file_context,
+#             "iteration": iteration
+#         }
+#     # If max iterations reached, force finalize
+#     if state.get("iteration") >= 3:
+#         print("ITERATION CONDITION MET")
+#         return {
+#             "messages": [AIMessage(content="READY FOR FINAL ANSWER")],
+#             "input_file": file_context,
+#             "iteration": iteration
+#         }
+#     # Otherwise, keep looping
+#     return {
+#         "messages": [AIMessage(content=response.content)],
+#         "input_file": file_context,
+#         "iteration": iteration
+#     }
 
 # --- Output node ---
 @traceable(name="output-node")
@@ -334,43 +330,73 @@ def output_node(state: AgentState):
     return {
         "messages": [AIMessage(content=f"FINAL ANSWER: {final_answer}")],
         "input_file": file_context,
-        "iteration": state.get("iteration", 0)
+        "iteration": state.get("iteration")
     }
+
+
+# Handler node: If LLM produces a tool call (function_call), go to tool; if "READY FOR FINAL ANSWER", go to output; else loop
+
+# def handler_tools_condition(state):
+#     msg = state["messages"][-1]
+#     print("=== handler_tools_condition ===")
+#     print("msg:", msg)
+#     if state.get("iteration") >= 3:
+#         print("Iteration limit reached, going to output.")
+#         return "output"
+#     if hasattr(msg, "additional_kwargs") and "function_call" in msg.additional_kwargs:
+#         print("Tool call detected.")
+#         return "tools"
+#     if hasattr(msg, "content") and "ready for final answer" in msg.content.lower():
+#         print("Detected READY FOR FINAL ANSWER, going to output.")
+#         return "output"
+#     print("No tool call or finalize, defaulting to output (force finalize).")
+#     return "output"
+
+
+# ------------------ Main loop (refactored) ------------------
+@traceable(name="condition")
+def should_continue(state: AgentState):
+    """Route to tools if the LLM's last message includes tool calls; otherwise finish."""
+    messages = state["messages"]
+    iteration = state.get("iteration", 0)
+    last = messages[-1]
+    if getattr(last, "tool_calls", None) and iteration < 3:
+        return "tools"
+    return "output"
+
+@traceable(name="handler")
+def handler_node(state: AgentState) -> AgentState:
+    messages = state["messages"]
+    iteration = state.get("iteration", 0)
+
+    # Encourage tool use via a light system prompt, but DO NOT craft function_call payloads yourself.
+    sys = SystemMessage(content=(
+        "You are a helpful assistant. Use tools when needed. "
+        "If you have enough information to answer, answer concisely."
+    ))
+
+    response = llm.invoke([sys, *messages])
+    return {
+        "messages": messages + [response],
+        "input_file": state.get("input_file", ""),
+        "iteration": iteration + 1,
+    }
+
+
+tool_node = ToolNode(tools=tools)
+
 # Define the graph
 builder = StateGraph(AgentState)
 builder.add_node("handler", handler_node)
 builder.add_node("output", output_node)
 builder.add_node("tools", tool_node)
 
-# Handler node: If LLM produces a tool call (function_call), go to tool; if "READY FOR FINAL ANSWER", go to output; else loop
-
-def handler_tools_condition(state):
-    msg = state["messages"][-1]
-    print("=== handler_tools_condition ===")
-    print("msg:", msg)
-    if hasattr(msg, "additional_kwargs") and "function_call" in msg.additional_kwargs:
-        print("Tool call detected.")
-        return "tools"
-    if hasattr(msg, "content") and "ready for final answer" in msg.content.lower():
-        print("Detected READY FOR FINAL ANSWER, going to output.")
-        return "output"
-    print("No tool call or finalize, defaulting to output (force finalize).")
-    return "output"
-
-
 builder.add_edge(START, "handler")
-builder.add_conditional_edges("handler", handler_tools_condition, ["output", "tools"])
+builder.add_conditional_edges("handler", should_continue, ["output", "tools"])
 builder.add_edge("tools", "handler")
-
-# builder.add_edge("handler", "output")  # To allow direct finalize
-# builder.set_entry_point("handler")
-# builder.set_finish_point("output")
-
 builder.add_edge("output", END)
 
-
 alfred = builder.compile()
-
 
 with open("graph_diagram.png", "wb") as f:
     f.write(alfred.get_graph().draw_mermaid_png())
