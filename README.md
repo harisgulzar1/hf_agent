@@ -3,7 +3,7 @@
 This GitHub repo is built as the final project for [HuggingFace AI Agents Course.](https://huggingface.co/learn/agents-course/unit0/introduction)
 
 After finishing the course, one can get the official certificate from HuggingFace.
-![Course Completion Certificate](certificate.pdf)
+![Course Completion Certificate](certificate.png)
 
 
 ## Implementation of Multi-Input LangGraph Agent
