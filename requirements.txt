@@ -1,7 +1,9 @@
-gradio
-requests
-langchain-core
-langchain-openai
-langgraph
-openai
-vim
+langchain-core>=0.2.0
+langgraph>=0.0.20
+langchain-openai>=0.0.8
+openai>=1.0.0
+python-dotenv>=1.0.0
+pandas>=2.0.0
+requests>=2.31.0
+langsmith>=0.0.74
+ipython>=8.0.0
