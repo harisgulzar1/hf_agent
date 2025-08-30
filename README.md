@@ -1,4 +1,4 @@
-# Multi-Input LangGraph Agent
+# Implementation of Multi-Input LangGraph Agent
 
 This repository contains a **LangGraph-based multi-input AI agent** that can handle text, images, audio, and video inputs. It uses **OpenAI models** bound to multiple tools for web search, image analysis, audio transcription, and video summarization, executing them dynamically based on the user's query.
 
@@ -59,6 +59,13 @@ This flow is visualized in `graph_diagram.png`.
 
 ## API Batch Mode
 The script’s `run_and_submit_all()` function can fetch multiple tasks from a specified API, run them, and submit answers back.
+
+## HuggingFace Course
+This GitHub repo is built as the final project for [HuggingFace AI Agents Course.](https://huggingface.co/learn/agents-course/unit0/introduction)
+
+After finishing the course, one can get the official certificate from HuggingFace.
+![Course Completion Certificate](certificate.png)
+
 
 ## License
 This project is licensed under the Apache License 2.0.
