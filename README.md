@@ -1,7 +1,10 @@
-# Implementation of Multi-Input LangGraph Agent
+# Implementation of Multi-Input LangGraph Agent and its MCP Implementation
 
 This repository contains a **LangGraph-based multi-input AI agent** that can handle text, images, audio, and video inputs. It uses **OpenAI models** bound to multiple tools for web search, image analysis, audio transcription, and video summarization, executing them dynamically based on the user's query.
+Both the simple LangGraph implementation and its MCP Client-Server implementation are done.
 
+### 
+![LangGraph Workflow with MCP Implementation](Agent on MCP.jpg)
 ![LangGraph Workflow](graph_diagram.png)
 
 ## Features
