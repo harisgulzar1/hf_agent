@@ -1,0 +1,161 @@
+{
+  "server_info": {
+    "name": "langgraph-tools-server",
+    "version": "1.0.0",
+    "description": "MCP server for LangGraph agent tools and prompts"
+  },
+  "tools": {
+    "compile_code": {
+      "name": "compile_code",
+      "description": "Download a code file via GET {API_URL}/files/{task_id} and pass it to a model with a built-in code execution tool.",
+      "model_endpoint": "gpt-4.1",
+      "parameters": {
+        "task_id": {
+          "type": "string",
+          "description": "Backend task ID that identifies the attached code file.",
+          "required": true
+        },
+        "message": {
+          "type": "string",
+          "description": "Natural-language instructions (e.g., 'run tests', 'compile and show errors').",
+          "default": "Compile the attached code and report the result.",
+          "required": false
+        }
+      },
+      "tools_required": [
+        {
+          "type": "code_interpreter",
+          "container": {"type": "auto"}
+        }
+      ]
+    },
+    "openai_web_search": {
+      "name": "openai_web_search",
+      "description": "Perform a web search using OpenAI's web_search_preview tool.",
+      "model_endpoint": "gpt-4.1-mini",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "description": "The search query string.",
+          "required": true
+        }
+      },
+      "tools_required": [
+        {
+          "type": "web_search_preview"
+        }
+      ]
+    },
+    "image_analyzer_tool": {
+      "name": "image_analyzer_tool",
+      "description": "Analyze an image retrieved by the corresponding task_id. task_id is a sequence of alphanumeric characters e.g. 99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3.",
+      "model_endpoint": "gpt-4o",
+      "parameters": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID, used to download the corresponding file related to the task. GET {API_URL}/files/{task_id}",
+          "required": true
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt to describe the image.",
+          "default": "Describe this image in detail.",
+          "required": false
+        }
+      },
+      "max_tokens": 1000
+    },
+    "audio_transcription_tool": {
+      "name": "audio_transcription_tool",
+      "description": "Transcribe an audio file by downloading from the API using task_id. task_id is a sequence of alphanumeric characters e.g. 99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3.",
+      "model_endpoint": "whisper-1",
+      "parameters": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID, used to download the corresponding file related to the task. GET {API_URL}/files/{task_id}",
+          "required": true
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Natural language prompt to guide the analysis.",
+          "default": "Transcribe this audio.",
+          "required": false
+        }
+      },
+      "response_format": "text"
+    },
+    "video_analysis_tool": {
+      "name": "video_analysis_tool",
+      "description": "Downloads a YouTube video directly from the provided URL, extracts audio for transcription, and sample frames for visual analysis without requiring ffmpeg. Uses OpenAI Whisper for transcription and GPT-4 Vision for frame analysis.",
+      "model_endpoints": {
+        "transcription": "whisper-1",
+        "vision": "gpt-4o",
+        "summary": "gpt-4o"
+      },
+      "parameters": {
+        "youtube_url": {
+          "type": "string",
+          "description": "Used to download the video.",
+          "required": true
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Natural language prompt to guide the analysis.",
+          "default": "Transcribe or summarize the video.",
+          "required": false
+        },
+        "mode": {
+          "type": "string",
+          "description": "Analysis mode: 'auto', 'transcribe', or 'summarize'.",
+          "default": "auto",
+          "required": false
+        },
+        "max_chars": {
+          "type": "integer",
+          "description": "Maximum characters for transcript processing.",
+          "default": 12000,
+          "required": false
+        }
+      },
+      "vision_max_tokens": 300,
+      "summary_max_tokens": 900
+    }
+  },
+  "resources": {
+    "prompts": {
+      "handler_system_prompt": {
+        "name": "handler_system_prompt",
+        "description": "System prompt for the handler node in LangGraph",
+        "content": "You are a helpful assistant. Use tools when needed. Available tools:\n- compile_code(task_id: str, prompt: str) -> str: Interprets the code and returns the results, according to the prompt.\n- openai_web_search(query: str) -> str: For web info.\n- image_analyzer_tool(task_id: str, prompt: str) -> str: Call this tool for image analysis only when there is an attached image and the prompt is about the image.\n- audio_transcription_tool(task_id: str, prompt: str) -> str: For audio to text.\n- video_analysis_tool(youtube_url: str, prompt: str) -> str: For YouTube video transcript/summary.\n\nIf you have enough information to answer, answer concisely."
+      },
+      "output_system_prompt": {
+        "name": "output_system_prompt",
+        "description": "System prompt for the output node in LangGraph",
+        "content": "You are a general AI assistant. I will ask you a question. Report your thoughts, and finish your answer with the following template: FINAL ANSWER: [YOUR FINAL ANSWER]. YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings.\nIf you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise.\nIf you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise.\nIf you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string.\nRemember: Only output FINAL ANSWER: [YOUR FINAL ANSWER] in this step!"
+      },
+      "image_analysis_system_prompt": {
+        "name": "image_analysis_system_prompt",
+        "description": "System prompt for image analysis",
+        "content": "You are a helpful assistant who analyzes images."
+      },
+      "vision_analysis_system_prompt": {
+        "name": "vision_analysis_system_prompt",
+        "description": "System prompt for vision analysis in video tool",
+        "content": "You are an expert visual analyst."
+      },
+      "video_summary_system_prompt": {
+        "name": "video_summary_system_prompt",
+        "description": "System prompt for video summarization",
+        "content": "You summarize videos using transcript and visual context."
+      }
+    }
+  },
+  "configuration": {
+    "api_url": "${API_URL}",
+    "openai_api_key": "${OPENAI_API_KEY}",
+    "max_iterations": 3,
+    "download_timeout": 30,
+    "video_frame_sample_interval": 5,
+    "max_video_frames": 10
+  }
+}

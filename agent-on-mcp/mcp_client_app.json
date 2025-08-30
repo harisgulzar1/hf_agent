@@ -1,0 +1,101 @@
+{
+  "app_info": {
+    "name": "langgraph-mcp-client",
+    "version": "1.0.0",
+    "description": "LangGraph agent using MCP tools server"
+  },
+  "mcp_server": {
+    "command": "python",
+    "args": ["mcp_tools_server.py"],
+    "env": {
+      "PYTHONPATH": "."
+    }
+  },
+  "langgraph_config": {
+    "nodes": {
+      "handler": {
+        "name": "handler_node",
+        "description": "Main handler node that processes questions and decides on tool usage",
+        "llm_endpoint": "gpt-4o",
+        "system_prompt_resource": "prompt://handler_system_prompt",
+        "max_iterations": 3,
+        "tools_enabled": true
+      },
+      "output": {
+        "name": "output_node", 
+        "description": "Final output formatting node",
+        "llm_endpoint": "gpt-4o",
+        "system_prompt_resource": "prompt://output_system_prompt",
+        "tools_enabled": false
+      },
+      "tools": {
+        "name": "tool_node",
+        "description": "Node that executes MCP tools",
+        "type": "mcp_tool_node"
+      }
+    },
+    "edges": {
+      "start_to_handler": {
+        "from": "START",
+        "to": "handler"
+      },
+      "handler_conditional": {
+        "from": "handler",
+        "condition": "should_continue",
+        "routes": {
+          "tools": "tools",
+          "output": "output"
+        }
+      },
+      "tools_to_handler": {
+        "from": "tools", 
+        "to": "handler"
+      },
+      "output_to_end": {
+        "from": "output",
+        "to": "END"
+      }
+    },
+    "state": {
+      "messages": {
+        "type": "list",
+        "annotation": "add_messages",
+        "description": "List of conversation messages"
+      },
+      "task_id": {
+        "type": "string",
+        "description": "Task ID for file operations"
+      },
+      "iteration": {
+        "type": "integer",
+        "description": "Current iteration count",
+        "default": 0
+      }
+    }
+  },
+  "api_config": {
+    "questions_endpoint": "/questions",
+    "submit_endpoint": "/submit",
+    "files_endpoint": "/files",
+    "timeout": 15
+  },
+  "environment": {
+    "required_vars": [
+      "HF_USERNAME",
+      "OPENAI_API_KEY", 
+      "API_URL",
+      "LANGCHAIN_PROJECT"
+    ],
+    "optional_vars": [
+      "LANGCHAIN_TRACING_V2",
+      "LANGCHAIN_API_KEY"
+    ]
+  },
+  "tracing": {
+    "enabled": true,
+    "project_name": "MultiInputAgentTrace",
+    "tracer_callbacks": [
+      "LangChainTracer"
+    ]
+  }
+}
