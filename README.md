@@ -4,7 +4,7 @@ This repository contains a **LangGraph-based multi-input AI agent** that can han
 Both the simple LangGraph implementation and its MCP Client-Server implementation are done.
 
 ### 
-![LangGraph Workflow with MCP Implementation](Agent on MCP.jpg)
+![LangGraph Workflow with MCP Implementation](Agent_on_MCP.jpg)
 
 ## Features
 
