@@ -5,7 +5,6 @@ Both the simple LangGraph implementation and its MCP Client-Server implementatio
 
 ### 
 ![LangGraph Workflow with MCP Implementation](Agent on MCP.jpg)
-![LangGraph Workflow](graph_diagram.png)
 
 ## Features
 
@@ -29,6 +28,7 @@ Both the simple LangGraph implementation and its MCP Client-Server implementatio
 - [**langsmith**](https://github.com/langchain-ai/langsmith-sdk) – Tracing and debugging for LangChain apps.
 
 ## Main Workflow
+![LangGraph Workflow](graph_diagram.png)
 
 The core workflow follows this structure:
 1. **Main Node (`main_node`)**: The LLM is invoked (with tools bound) and may emit `tool_calls`.
