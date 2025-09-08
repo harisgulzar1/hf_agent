@@ -59,6 +59,9 @@ This flow is visualized in `graph_diagram.png`.
    ```bash
    python multi_input_agent.py
    ```
+## Agent Evaluation
+The evaluation is done on a subset of the [GAIA: A Benchmark for General AI Assistants](https://arxiv.org/pdf/2311.12983), originally released by META.
+The agent is supposed to process the attached files e.g. Pictures, Videos, Audios, Excel Files, Codes etc.
 
 ## API Batch Mode
 The script’s `run_and_submit_all()` function can fetch multiple tasks from a specified API, run them, and submit answers back.
