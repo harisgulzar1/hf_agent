@@ -1,9 +1,20 @@
 # Background
 
-I have implemented a Langgraph agent which which has three nodes i.e. handler_node, tool_node, and output_node.
-Inside tool_node, there are following tools which are implemented in form of python functions under the @tool decorator.
-'compile_code', 'openai_web_search', 'image_analyzer_tool', 'audio_transcription_tool', 'video_analysis_tool'
-The main code, takes the questions through a run_and_submit_all function and passes the questions along with the attached file (if any) to the agent by using the AgentState object.
+I have implemented a Langgraph agent which has three nodes i.e. handler_node, tool_node, and output_node.
+
+Inside **tool_node**, the following tools are implemented as Python functions under the `@tool` decorator:
+
+- 🛠️ **compile_code** – For compiling and running code snippets.  
+- 🌐 **openai_web_search** – For performing web searches using OpenAI’s integration.  
+- 🖼️ **image_analyzer_tool** – For analyzing images and extracting useful details.  
+- 🎙️ **audio_transcription_tool** – For converting speech/audio into text.  
+- 🎥 **video_analysis_tool** – For analyzing video content.  
+
+The main code uses a function called **`run_and_submit_all`**, which:  
+- 📩 Takes the user’s questions.  
+- 📎 Passes them along with any attached file (if provided).  
+- 🤖 Sends everything to the agent through the **`AgentState`** object.  
+
 
 
 # Instruction
