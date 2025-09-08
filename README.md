@@ -31,10 +31,22 @@ Both the simple LangGraph implementation and its MCP Client-Server implementatio
 ![LangGraph Workflow](graph_diagram.png)
 
 The core workflow follows this structure:
-1. **Main Node (`main_node`)**: The LLM is invoked (with tools bound) and may emit `tool_calls`.
-2. **Tool Node (`ToolNode`)**: Executes any emitted tool calls.
-3. **Conditional Routing**: If further tool calls are needed, return to `main_node`; otherwise, proceed to output.
-4. **Output Node (`output_node`)**: Produces the final answer.
+
+### 1. **Main Node (`main_node`)**
+The LLM is invoked (with tools bound) and may emit `tool_calls`.
+### 2. **Tool Node (`ToolNode`)**
+  Inside **tool_node**, the following tools are implemented as Python functions under the `@tool` decorator:
+
+#### 🛠️ **compile_code** – For compiling and running code snippets.  
+#### 🌐 **openai_web_search** – For performing web searches using OpenAI’s integration.  
+#### 🖼️ **image_analyzer_tool** – For analyzing images and extracting useful details.  
+#### 🎙️ **audio_transcription_tool** – For converting speech/audio into text.  
+#### 🎥 **video_analysis_tool** – For analyzing video content.  
+
+### 4. **Conditional Routing**
+If further tool calls are needed, return to `main_node`; otherwise, proceed to output.
+### 5. **Output Node (`output_node`)**
+Produces the final answer.
 
 This flow is visualized in `graph_diagram.png`.
 
